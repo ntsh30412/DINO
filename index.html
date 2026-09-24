@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0c1424" />
+  <title>Night Runner | 無限跑酷</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="game-shell">
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="Night Runner 首頁">
+        <span class="brand-mark">N</span>
+        <span class="brand-copy"><strong>NIGHT</strong><small>RUNNER / 01</small></span>
+      </a>
+      <div class="top-status">
+        <span class="live-dot"></span>
+        <span>LIVE SESSION</span>
+      </div>
+    </header>
+
+    <section class="intro" aria-labelledby="game-title">
+      <div>
+        <p class="eyebrow">ENDLESS HORIZON <span>///</span> CANVAS 01</p>
+        <h1 id="game-title">Keep moving.<br /><em>Own the night.</em></h1>
+      </div>
+      <p class="intro-note">在霓虹城市邊界奔跑，<br />越過障礙，刷新自己的紀錄。</p>
+    </section>
+
+    <section class="game-card" aria-label="Night Runner 遊戲區域">
+      <div class="game-meta">
+        <div class="meta-item"><span>距離</span><strong id="score">00000</strong></div>
+        <div class="meta-item"><span>最高紀錄</span><strong id="high-score">00000</strong></div>
+        <div class="meta-item meta-right"><span>速度</span><strong id="speed-label">1.0x</strong></div>
+      </div>
+      <div class="canvas-wrap" id="canvas-wrap">
+        <canvas id="game-canvas" width="1200" height="500" aria-label="第三人稱無限跑酷遊戲畫面"></canvas>
+        <div class="game-overlay" id="start-overlay">
+          <div class="overlay-kicker">SYSTEM READY</div>
+          <h2>準備出發</h2>
+          <p>控制角色奔跑、跳躍並擊退所有敵人</p>
+          <button class="primary-btn" id="start-button" type="button"><span>開始奔跑</span><span class="arrow">↗</span></button>
+        </div>
+        <div class="game-overlay hidden" id="game-over-overlay">
+          <div class="overlay-kicker danger">RUN ENDED</div>
+          <h2>撞上了。</h2>
+          <p>本次距離 <strong id="final-score">00000</strong></p>
+          <button class="primary-btn" id="restart-button" type="button"><span>再跑一次</span><span class="arrow">↻</span></button>
+        </div>
+        <div class="mobile-controls" aria-label="觸控遊戲控制">
+          <button type="button" id="left-button" aria-label="向左移動">左 <b>←</b></button>
+          <button type="button" id="right-button" aria-label="向右移動">右 <b>→</b></button>
+          <button type="button" id="attack-button" aria-label="發射能量彈">攻擊 <b>X</b></button>
+          <button type="button" id="fly-button" aria-label="啟動飛行">飛行 <b>F</b></button>
+        </div>
+        <div class="touch-hint">← → 移動 <span>·</span> SPACE 跳躍 <span>·</span> X 攻擊 <span>·</span> F 飛行</div>
+      </div>
+      <div class="game-footer">
+        <span>TIP: 射擊敵人，或啟動飛行穿越空中航線</span>
+        <span class="frame-label">FRAME 01 <i></i></span>
+      </div>
+    </section>
+
+    <footer class="footer-note">
+      <span>DESIGNED FOR THE LATE-NIGHT RUNNERS</span>
+      <span>HTML5 CANVAS / 60 FPS</span>
+    </footer>
+  </main>
+  <script src="game.js"></script>
+</body>
+</html>
