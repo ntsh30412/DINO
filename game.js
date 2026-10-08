@@ -10,9 +10,11 @@ const finalScoreEl = document.getElementById('final-score');
 const startButton = document.getElementById('start-button');
 const restartButton = document.getElementById('restart-button');
 const attackButton = document.getElementById('attack-button');
-const flyButton = document.getElementById('fly-button');
+const jumpButton = document.getElementById('jump-button');
 const leftButton = document.getElementById('left-button');
 const rightButton = document.getElementById('right-button');
+const runnerSprite = new Image();
+runnerSprite.src = 'pikachu-running-sprite.png';
 
 const world = { width: 1200, height: 500, ground: 386 };
 let highScore = Number(localStorage.getItem('night-runner-high-score') || 0);
@@ -31,9 +33,10 @@ let obstacles = [];
 let enemies = [];
 let projectiles = [];
 let dust = [];
-const keys = { up: false, down: false, left: false, right: false };
+const keys = { left: false, right: false };
 
-const runner = { x: 145, y: world.ground - 70, width: 38, height: 70, velocityY: 0, grounded: true, flying: false, flightTime: 0, lane: 0, legPhase: 0 };
+const runner = { x: 145, y: world.ground - 70, width: 96, height: 70, velocityY: 0, grounded: true, jumps: 0, lane: 0, legPhase: 0 };
+const runnerAnimation = { frame: 0, startedAt: null, frameDuration: 70, frameCount: 4, frameWidth: 200, frameHeight: 146 };
 const camera = { x: 0, y: 0 };
 const stars = Array.from({ length: 62 }, (_, index) => ({
   x: (index * 173) % world.width,
@@ -52,7 +55,8 @@ function resizeCanvas() {
 function resetGame() {
   score = 0; distance = 0; speed = 6; spawnTimer = 0; nextSpawn = 930; enemyTimer = 0; nextEnemy = 1450; attackCooldown = 0;
   obstacles = []; enemies = []; projectiles = []; dust = [];
-  runner.y = world.ground - runner.height; runner.velocityY = 0; runner.grounded = true; runner.flying = false; runner.flightTime = 0; runner.lane = 0; camera.x = 0; camera.y = 0;
+  runner.y = world.ground - runner.height; runner.velocityY = 0; runner.grounded = true; runner.jumps = 0; runner.lane = 0; camera.x = 0; camera.y = 0;
+  runnerAnimation.frame = 0; runnerAnimation.startedAt = null;
   scoreEl.textContent = formatScore(0); speedLabel.textContent = '1.0x';
 }
 function startGame() {
@@ -69,14 +73,10 @@ function endGame() {
 }
 function jump() {
   if (state === 'ready' || state === 'over') { startGame(); return; }
-  if (runner.grounded) {
-    runner.velocityY = -15.8; runner.grounded = false;
+  if (runner.jumps < 2) {
+    runner.velocityY = -15.8; runner.grounded = false; runner.jumps++;
     for (let i = 0; i < 5; i++) dust.push({ x: runner.x + 6, y: world.ground - 3, vx: -Math.random() * 1.8, vy: -Math.random() * 1.4, life: 1 });
   }
-}
-function fly() {
-  if (state === 'ready' || state === 'over') { startGame(); return; }
-  if (!runner.flying) { runner.flying = true; runner.grounded = false; runner.flightTime = 4.2; runner.velocityY = -3.2; }
 }
 function attack() {
   if (state === 'ready' || state === 'over') { startGame(); return; }
@@ -98,17 +98,8 @@ function update(delta) {
   speed = Math.min(13.5, speed + delta * .00018);
   distance += speed * frame * .105; score = distance;
   scoreEl.textContent = formatScore(score); speedLabel.textContent = `${(speed / 6).toFixed(1)}x`;
-  if (runner.flying) {
-    runner.flightTime -= delta / 1000;
-    if (keys.up) runner.y -= 5.5 * frame;
-    if (keys.down) runner.y += 5.5 * frame;
-    runner.y = Math.max(42, Math.min(world.ground - runner.height - 18, runner.y));
-    if (runner.flightTime <= 0) runner.flying = false;
-  } else {
-    runner.velocityY += .76 * frame; runner.y += runner.velocityY * frame;
-  }
-  if (runner.y >= world.ground - runner.height) { runner.y = world.ground - runner.height; runner.velocityY = 0; runner.grounded = true; }
-  if (runner.flying) runner.grounded = false;
+  runner.velocityY += .76 * frame; runner.y += runner.velocityY * frame;
+  if (runner.y >= world.ground - runner.height) { runner.y = world.ground - runner.height; runner.velocityY = 0; runner.grounded = true; runner.jumps = 0; }
   if (keys.left) runner.lane -= .028 * frame;
   if (keys.right) runner.lane += .028 * frame;
   runner.lane = Math.max(-1, Math.min(1, runner.lane));
@@ -129,7 +120,7 @@ function update(delta) {
   projectiles = projectiles.filter(projectile => projectile.x < world.width + 30 && projectile.life > 0);
   dust.forEach(particle => { particle.x += particle.vx * frame; particle.y += particle.vy * frame; particle.vy += .08 * frame; particle.life -= .035 * frame; });
   dust = dust.filter(particle => particle.life > 0);
-  const runnerBox = { x: runner.x + 8, y: runner.y + 7, width: 23, height: 62 };
+  const runnerBox = { x: runner.x + 14, y: runner.y + 8, width: 68, height: 58 };
   if (obstacles.some(obstacle => runnerBox.x < obstacle.x + obstacle.width - 4 && runnerBox.x + runnerBox.width > obstacle.x + 4 && runnerBox.y < obstacle.y + obstacle.height && runnerBox.y + runnerBox.height > obstacle.y + 4)) endGame();
   enemies.forEach(enemy => {
     const enemyBox = { x: enemy.x + 4, y: enemy.y + 4, width: enemy.width - 8, height: enemy.flying ? 34 : enemy.height - 4 };
@@ -158,11 +149,11 @@ function drawBackground() {
 function drawRunner() {
   const bounce = runner.grounded ? Math.sin(runner.legPhase) * 1.8 : 0;
   const x = runner.x + runner.lane * 65; const y = runner.y + bounce - camera.y * .18;
-  ctx.save(); ctx.translate(x, y); ctx.shadowBlur = 16; ctx.shadowColor = runner.flying ? '#ffad5c' : '#72e4db'; ctx.fillStyle = '#d9f8f2';
-  if (runner.flying) { ctx.strokeStyle = '#ffad5c'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(4, 34); ctx.lineTo(-18, 26); ctx.moveTo(30, 33); ctx.lineTo(50, 24); ctx.stroke(); }
-  ctx.beginPath(); ctx.moveTo(9, 18); ctx.lineTo(9, 4); ctx.lineTo(18, 0); ctx.lineTo(29, 0); ctx.lineTo(36, 8); ctx.lineTo(36, 31); ctx.lineTo(29, 31); ctx.lineTo(27, 53); ctx.lineTo(22, 53); ctx.lineTo(18, 35); ctx.lineTo(13, 67); ctx.lineTo(7, 67); ctx.lineTo(9, 34); ctx.lineTo(2, 48); ctx.lineTo(0, 45); ctx.lineTo(8, 25); ctx.closePath(); ctx.fill();
-  ctx.shadowBlur = 0; ctx.fillStyle = '#101d30'; ctx.fillRect(27, 8, 5, 5); ctx.fillStyle = '#ffad5c'; ctx.fillRect(4, 19, 5, 3);
-  ctx.strokeStyle = '#72e4db'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(12, 62); ctx.lineTo(5, 69); ctx.moveTo(26, 50); ctx.lineTo(34, 56); ctx.stroke(); ctx.restore();
+  ctx.save(); ctx.translate(x, y); ctx.shadowBlur = 16; ctx.shadowColor = '#72e4db';
+  if (runnerSprite.complete && runnerSprite.naturalWidth > 0) {
+    ctx.drawImage(runnerSprite, runnerAnimation.frame * runnerAnimation.frameWidth, 0, runnerAnimation.frameWidth, runnerAnimation.frameHeight, 0, 0, runner.width, runner.height);
+  }
+  ctx.restore();
 }
 function drawEnemies() {
   enemies.forEach(enemy => {
@@ -189,18 +180,23 @@ function drawObstacles() {
 }
 function drawDust() { dust.forEach(particle => { ctx.globalAlpha = particle.life; ctx.fillStyle = '#72e4db'; ctx.fillRect(particle.x, particle.y, 3, 3); }); ctx.globalAlpha = 1; }
 function render() { drawBackground(); drawDust(); drawObstacles(); drawEnemies(); drawProjectiles(); drawRunner(); }
+function updateRunnerAnimation(timestamp) {
+  if (runnerAnimation.startedAt === null) runnerAnimation.startedAt = timestamp;
+  const elapsed = timestamp - runnerAnimation.startedAt;
+  runnerAnimation.frame = Math.floor(elapsed / runnerAnimation.frameDuration) % runnerAnimation.frameCount;
+}
 function loop(timestamp) {
-  if (state !== 'running') { render(); return; }
   const delta = Math.min(32, timestamp - lastTime); lastTime = timestamp;
+  updateRunnerAnimation(timestamp);
+  if (state !== 'running') { render(); animationId = requestAnimationFrame(loop); return; }
   update(delta); render(); animationId = requestAnimationFrame(loop);
 }
 function handleInput(event) {
   if (event.type !== 'keydown') return;
   if (event.code === 'Space' || event.code === 'ArrowUp') { event.preventDefault(); jump(); }
-  if (event.code === 'KeyF') { event.preventDefault(); fly(); }
   if (event.code === 'KeyX' || event.code === 'KeyZ') { event.preventDefault(); attack(); }
 }
-function handleKeyState(event, pressed) { if (event.code === 'ArrowUp') keys.up = pressed; if (event.code === 'ArrowDown') keys.down = pressed; if (event.code === 'ArrowLeft') keys.left = pressed; if (event.code === 'ArrowRight') keys.right = pressed; }
+function handleKeyState(event, pressed) { if (event.code === 'ArrowLeft') keys.left = pressed; if (event.code === 'ArrowRight') keys.right = pressed; }
 function bindMoveButton(button, key) { button.addEventListener('pointerdown', event => { event.preventDefault(); keys[key] = true; }); button.addEventListener('pointerup', () => { keys[key] = false; }); button.addEventListener('pointerleave', () => { keys[key] = false; }); }
-startButton.addEventListener('click', jump); restartButton.addEventListener('click', jump); attackButton.addEventListener('click', attack); flyButton.addEventListener('click', fly); bindMoveButton(leftButton, 'left'); bindMoveButton(rightButton, 'right'); canvasWrap.addEventListener('pointerdown', event => { if (event.target.tagName !== 'BUTTON') jump(); }); window.addEventListener('keydown', handleInput); window.addEventListener('keydown', event => handleKeyState(event, true)); window.addEventListener('keyup', event => handleKeyState(event, false)); window.addEventListener('blur', () => { Object.keys(keys).forEach(key => { keys[key] = false; }); }); window.addEventListener('resize', resizeCanvas);
-highScoreEl.textContent = formatScore(highScore); resizeCanvas(); render();
+startButton.addEventListener('click', jump); restartButton.addEventListener('click', jump); attackButton.addEventListener('click', attack); jumpButton.addEventListener('click', jump); bindMoveButton(leftButton, 'left'); bindMoveButton(rightButton, 'right'); canvasWrap.addEventListener('pointerdown', event => { if (event.target.tagName !== 'BUTTON') jump(); }); window.addEventListener('keydown', handleInput); window.addEventListener('keydown', event => handleKeyState(event, true)); window.addEventListener('keyup', event => handleKeyState(event, false)); window.addEventListener('blur', () => { Object.keys(keys).forEach(key => { keys[key] = false; }); }); window.addEventListener('resize', resizeCanvas);
+highScoreEl.textContent = formatScore(highScore); resizeCanvas(); render(); animationId = requestAnimationFrame(loop);
